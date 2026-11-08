@@ -1,0 +1,12 @@
+[
+ {"number":11,"title":"Empty state copy on Notes list","labels":["ready-for-agent"],"blockedBy":[],
+  "body":"Show 'No notes yet' + New note button when list is empty.\nAC:\n- empty list renders heading 'No notes yet' and a New note button\n- unit test in app/notes/__tests__/empty.test.tsx"},
+ {"number":12,"title":"Make the app feel faster","labels":["ready-for-agent"],"blockedBy":[],
+  "body":"It feels slow sometimes. Make it faster."},
+ {"number":13,"title":"POST /api/notes/:id/share returns share link","labels":["ready-for-agent"],"blockedBy":[],
+  "body":"AC:\n- returns 201 {url} for owner\n- 403 for non-owner\n- integration test with PGlite"},
+ {"number":14,"title":"Deduct 1 credit per AI summary, atomically","labels":["ready-for-agent"],"blockedBy":[],
+  "body":"AC:\n- each summary deducts exactly 1 credit in the same transaction as the summary row\n- concurrent requests never drive balance below 0 (test with 20 parallel calls)\n- 402 when balance is 0"},
+ {"number":15,"title":"Share dialog UI using share endpoint","labels":["ready-for-agent"],"blockedBy":[13],
+  "body":"AC:\n- Share button opens dialog showing link from POST /api/notes/:id/share\n- copy button copies url\n- e2e test in e2e/share.spec.ts"}
+]

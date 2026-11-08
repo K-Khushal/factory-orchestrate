@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: fuzzy-feature-present
+context:
+  scaffold_script: place-files.sh
+expected_outcome: |
+  User is present and the work is fuzzy with no tickets: the chef routes into grill-with-docs → to-spec → to-tickets, fires no cooks, and records hold mode.

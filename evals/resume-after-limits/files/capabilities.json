@@ -1,0 +1,6 @@
+{"providers":[
+ {"providerInstanceId":"codex","models":["gpt-6.1-sol","gpt-6-astra","gpt-6.1-terra","gpt-6-luna"],"canRunChildTask":true},
+ {"providerInstanceId":"claudeAgent","models":["claude-opus-5-5","claude-sonnet-5-5","claude-fable-5-1","claude-haiku-5-5"],"canRunChildTask":true},
+ {"providerInstanceId":"antigravity","models":["gemini-3.8-flash","claude-sonnet-4-6","claude-opus-4-6-thinking","gpt-oss-120b-medium"],"canRunChildTask":true},
+ {"providerInstanceId":"grok","constraints":["disabled"]},{"providerInstanceId":"cursor","constraints":["disabled"]}
+],"features":{"maxBatchThreads":20}}

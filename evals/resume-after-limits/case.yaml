@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: resume-after-limits
+context:
+  scaffold_script: place-files.sh
+expected_outcome: |
+  Reconciles ledger first; re-fires the rate-limited cook on a same-tier alternate provider; fix cook gets only open findings; flaky CI gets one rerun; nothing polls; ledger updated.
