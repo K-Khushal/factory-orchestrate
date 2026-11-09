@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: resume-after-crash
+context:
+  scaffold_script: place-files.sh
+expected_outcome: |
+  Reacquire coordinator ownership and reconcile the pending attempt, branch, and PR before dispatch. Preserve deadline and reservations. Park ticket 11 while the original writer may still write.

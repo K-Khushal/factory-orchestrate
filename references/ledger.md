@@ -1,49 +1,73 @@
 # Ledger
 
-The ledger is the kitchen's only memory across compaction, crashes and new sessions. It lives at `$(git rev-parse --git-common-dir)/factory/ledger.md`. The tracker and the git host hold the truth about tickets and PRs; the ledger holds what is in flight and why. Keep it small: overwrite the Menu rows, append to the Log, and archive the Log under `factory/archive/` when it passes about 200 lines.
+- **Path:** `<F>/ledger.md`, where `<F>` = `$(git rev-parse --path-format=absolute --git-common-dir)/factory`. Every worktree shares it and it is never committed.
+- **What it holds:** what is in flight and why.
+- **What it doesn't:** the truth about tickets and PRs. That lives in the tracker and on the git host.
+- **Format:** one line per ticket, so an update is a single-line edit. Log lines are appended.
 
 ## Format
 
-```markdown
-# Factory ledger: <owner/repo>
-service: <started ISO date>   mode: serve | hold   base: <branch> @ <sha>
-roster: cook=<provider/model/effort> precise=<…> hard=<…> taster=<…> scout=<…>
-gates: <cmd> → <cmd> → …
-in-flight cap: <n>
+```
+# factory <run-id>  repo=<owner/repo>  target=<branch>
+mode=hold|serve  authority="<user's words>"  adapter=t3|hermes|conductor|claude-code|cli|serial  review=cross-family|single-family  council=yes|no
+base=<sha>  gates="<cmd> → <cmd>"  spec=<path|->
+budget: deadline=<UTC>  tickets=<used>/<cap>  dispatches=<used>/<cap>  writers=<n>/<cap>
+roster: cook=<p/model/effort> hard=<…> judge=<…> alt-judge=<…> cheap=<…>
 
-## Menu
-| ticket | state | task | branch / PR | head | verdict | rounds | note |
-|---|---|---|---|---|---|---|---|
-| #97 | tasting | <taskId> | m9/foundations #103 | a1b2c3d | — | 1 | cook=sol |
+## tickets
+#11 risk=low state=merged attempt=t-a1 branch=t11/empty pr=41 base=4f2a9c1 head=9c0d1e2 verdict=APPROVE@9c0d1e2 rounds=1 retries=0 cook=sol
+#14 risk=high state=fixing attempt=t-c4 branch=t14/credits pr=43 base=4f2a9c1 head=7aa01bf verdict=CHANGES rounds=1 retries=0 open=S1,S2
 
-## Waiting on you
-- #101: <decision in one line>. Options: A / B. **Recommend A** because <reason>. Blocks: #101, #104.
+## waiting on you
+- #12: <decision>. Recommend <A> because <reason>. Blocks: <refs>.
 
-## Log
-2026-11-04T19:05Z #97 cooking task=<id> gpt-6.1-sol/medium
-2026-11-04T19:41Z #97 PR #103 head=a1b2c3d evidence ok → tasting claude-sonnet-5-5/high
+## log
+<UTC> #<n> <event> <ids/sha/model>
 ```
 
-**States:** `queued → cooking → tasting ⇄ fixing → at-pass → merged | ready`. Exit states: `parked` (waiting on the user) and `86` (dropped after retries, with the cause).
+- **Ticket states:**
+  - Main path: `queued → cooking → tasting ⇄ fixing → at-pass → merging → merged | ready`.
+  - Exits: `parked`, `dropped`, `uncertain`.
+- **Writing rules:**
+  - Write the attempt line **before** launch, then fill in the handle once the launch returns.
+  - Edit only the line that changed; never rewrite the file.
+  - Archive the log to `<F>/archive/` once it passes about 200 lines.
+- **Older ledgers:** a ledger in the old Markdown-table format is read once, then rewritten in this format.
 
-## Resuming
+## Budget defaults
 
-1. Read the ledger.
-2. For every non-terminal row, check the live state once: `gh pr view`, plus the task's last result if a notification was missed.
-3. Correct each row.
-4. Account for every task id as done, replaced or cancelled.
-5. Then fire.
+Use whatever the user, the host or an existing ledger header states. Otherwise:
+- **deadline:** now + 8 h when the user is away, now + 2 h when present.
+- **tickets:** the size of the ready queue (or the approved breakdown, when planning), at most 12.
+- **dispatches:** 4 × tickets. Every cook, taster, scout, retry and designer counts as one.
+- **writers:** 4, never more than the isolated workspaces available.
 
-## Service report
+**How the budget is spent:**
+- Increment a counter **before** you act. Replaying an attempt whose acknowledgment was lost reuses the same reservation.
+- **Cap or deadline hit:** start nothing new and finish only work that is already verified. Then cancel what's still outstanding where you can, reconcile, and report.
+- **Resume:** keeps the original deadline and counters. Only the user can extend them.
 
-This is your final message. It holds links and one-liners only; no transcripts.
+## Lock and resume
+
+1. **Taking the lock.** Run `mkdir -p <F>`, then make the lock with `mkdir <F>/lock` and write `<run-id> <UTC>` inside. An older ledger with no lock: take the lock. If the lock already exists and isn't yours:
+   - **Its run's last log line is under 2 h old, or it has live attempts:** stop and ask. Never run two orchestrators against one target.
+   - **Otherwise:** take it over, and log `takeover <old-run>`.
+2. **Reconciling.** Check every non-terminal line once against live state: `status(handle)`, `gh pr view`, the remote branch head.
+   - Correct each line.
+   - Account for every attempt id as done, replaced, cancelled or `uncertain`.
+3. **Fire.** Only after reconciling.
+
+The lock only coordinates sessions that share this git directory. Runs from separate clones need one orchestrator, chosen by the user.
+
+## Service report (your final message)
 
 ```markdown
-**Service report**: <date>, <mode>, <n> plates
-
-**Landed:** #<PR> <title> (closes #<ticket>): <evidence one-liner>
-**Ready for you (hold):** #<PR> …
-**Parked / 86:** #<ticket>: <why, in one line>
+**Service report**: <date>, <mode>, review=<level>, <n> tickets, budget <used>/<cap>
+**Landed:** PR #<n> <title> (closes #<t>): <evidence one-liner>
+**Ready for you:** PR #<n>: <why not merged>
+**Parked / dropped / uncertain:** #<t>: <one line>
 **Waiting on you:** <decision> → recommend <option>
-**Kitchen notes:** up to 3 retro lessons, each with where it should be encoded (lint / test / AGENTS.md / skill)
+**Spec convergence:** <met n/m criteria; gap tickets>
+**Release notes:** <path or one line>  **Rollback:** <one line>
+**Lessons (≤3):** <lesson> → <lint | test | AGENTS.md | skill>
 ```

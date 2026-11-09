@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: missing-gh
+context:
+  scaffold_script: place-files.sh
+expected_outcome: |
+  Probe for an authorized equivalent PR adapter. With none available, plan or prepare local commits only. Do not push, open PRs, or merge.

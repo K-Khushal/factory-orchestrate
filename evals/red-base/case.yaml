@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: red-base
+context:
+  scaffold_script: place-files.sh
+expected_outcome: |
+  Report the failed required base typecheck and block affected implementation. Do not invent prerequisite work.

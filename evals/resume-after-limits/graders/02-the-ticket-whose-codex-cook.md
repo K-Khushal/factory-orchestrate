@@ -4,4 +4,4 @@ focus: trace
 weight: 1
 ---
 
-The ticket whose Codex cook hit a usage limit is re-fired with the same brief on a different provider at the same tier (e.g. claude-sonnet-5-5), not left waiting for the limit reset.
+After confirming the failed writer is terminal, the plan retries #13 on an available equivalent model, starting from the actual remote head 5be21aa and preserving the existing commits.

@@ -1,0 +1,47 @@
+{
+  "repository": "acme/notes",
+  "target": "refs/heads/main",
+  "base": "4f2a9c1",
+  "baseChecks": {
+    "lint": "pass",
+    "typecheck": "pass"
+  },
+  "coordinatorLease": "available",
+  "prAdapter": "gh",
+  "nowUtc": "2026-11-09T13:59:00Z",
+  "ledger": {
+    "run": "budget-1",
+    "deadlineUtc": "2026-11-09T14:00:00Z",
+    "admittedTickets": 8,
+    "ticketCap": 8,
+    "dispatchesUsed": 16,
+    "dispatchCap": 16,
+    "mode": "serve"
+  },
+  "readyUnadmittedTicket": 12,
+  "currentAttempt": {
+    "ticket": 11,
+    "needsReview": true
+  },
+  "nextClockUtc": "2026-11-09T14:00:00Z",
+  "tickets": [
+    {
+      "number": 11,
+      "ready": true,
+      "blockedBy": [],
+      "writePaths": [
+        "app/notes.ts"
+      ],
+      "acceptance": "The agreed change for #11 is observable in the UI and its ticket-specific test passes."
+    },
+    {
+      "number": 12,
+      "ready": true,
+      "blockedBy": [],
+      "writePaths": [
+        "app/notes.ts"
+      ],
+      "acceptance": "The agreed change for #12 is observable in the UI and its ticket-specific test passes."
+    }
+  ]
+}

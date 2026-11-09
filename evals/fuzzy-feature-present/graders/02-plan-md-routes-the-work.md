@@ -4,4 +4,4 @@ focus: trace
 weight: 1
 ---
 
-plan.md routes the work through grilling (grill-with-docs or grilling) first, then to-spec and to-tickets, before any cooking.
+The plan resolves product decisions before creating a spec or actionable tickets. It can use installed planning skills or ask directly.

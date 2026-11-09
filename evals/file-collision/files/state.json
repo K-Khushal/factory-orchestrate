@@ -1,0 +1,43 @@
+{
+  "repository": "acme/notes",
+  "target": "refs/heads/main",
+  "base": "4f2a9c1",
+  "baseChecks": {
+    "lint": "pass",
+    "typecheck": "pass"
+  },
+  "coordinatorLease": "available",
+  "prAdapter": "gh",
+  "isolatedLaunch": true,
+  "completedPilot": 10,
+  "writerSlots": 2,
+  "tickets": [
+    {
+      "number": 11,
+      "ready": true,
+      "blockedBy": [],
+      "writePaths": [
+        "app/notes.ts"
+      ],
+      "acceptance": "The agreed change for #11 is observable in the UI and its ticket-specific test passes."
+    },
+    {
+      "number": 12,
+      "ready": true,
+      "blockedBy": [],
+      "writePaths": [
+        "app/notes.ts"
+      ],
+      "acceptance": "The agreed change for #12 is observable in the UI and its ticket-specific test passes."
+    },
+    {
+      "number": 13,
+      "ready": true,
+      "blockedBy": [],
+      "writePaths": [
+        "app/share.ts"
+      ],
+      "acceptance": "The agreed change for #13 is observable in the UI and its ticket-specific test passes."
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: no-worktree-harness
+context:
+  scaffold_script: place-files.sh
+expected_outcome: |
+  Use one foreground writer in the dedicated clean checkout and obtain separate review. Do not use isolated delegation or merge.

@@ -1,103 +1,121 @@
 ---
 name: factory-orchestrate
-description: Run a software factory (the kitchen) that ships a backlog of tickets as reviewed, merged PRs, using parallel agents across every provider while the user is away. Use when the user asks to run the factory or kitchen, ship or burn down the backlog, work through ready tickets or a milestone, orchestrate agents or delegates, or keep building autonomously / while they sleep / AFK.
+description: Runs an end-to-end software factory. Takes an idea or backlog through spec, design, vertical-slice tickets, parallel implementation by agents in isolated worktrees, review by a different model family, guarded merge, and a final check against the spec. Built for multi-model harnesses (T3 Code, Hermes, Conductor) and degrades on single-vendor ones. Use when asked to run the factory, ship a feature or milestone end to end, burn down ready tickets, or keep shipping while the user is away. Not for a single small edit, a one-off PR review, or generic delegation.
+disable-model-invocation: true
 ---
 
 # factory-orchestrate
 
-You are the **head chef** of a Michelin kitchen. You run the program and leave the cooking to the brigade: you decide which agent cooks each ticket, taste nothing yourself, and send only verified plates out through **the pass**. Your context is the scarcest resource in the kitchen; spend it on decisions, never on code dumps.
+You are the orchestrator. You never write product code. You decide, brief, check facts and integrate. Your context is the scarcest resource: spend it on decisions, never on logs, diffs or transcripts.
 
-## The brigade
+Four terms are used throughout:
+- **Cook:** one fresh agent per ticket, the only writer of its branch, in its own checkout.
+- **Taster:** a read-only reviewer from a different model family whenever one is reachable.
+- **Pass:** the merge gate you run yourself.
+- **Ledger:** your memory across compaction, crashes and sessions.
 
-| Role | Who | Writes |
-|---|---|---|
-| **Head chef** | you | the ledger, briefs, merges. Never product code |
-| **Scout** | cheap fast model, read-only | notes file outside the repo |
-| **Line cook** | one fresh agent per ticket, own worktree | one branch, one PR; the only writer of that branch |
-| **Taster** | a model from a *different family* than the cook, read-only | a verdict at one head SHA |
-| **Council** | three families tasting in parallel | high-stakes plates only |
+`<F>` = `$(git rev-parse --path-format=absolute --git-common-dir)/factory`.
 
-Pick models with [`references/brigade.md`](references/brigade.md): roster, escalation, and retry-by-cause. Brief every agent from [`references/briefs.md`](references/briefs.md); children get no history, so a brief stands alone.
+## Phases
 
-## Service modes
+Enter at the first phase whose output is missing. Load a phase's reference only when you enter it.
 
-Settle the mode in step 1 and record it in the ledger.
+| Phase | Enter when | Output | User | Reference |
+|---|---|---|---|---|
+| Setup | always | ledger header | — | [ledger](references/ledger.md), [harness](references/harness.md) |
+| Shape | no agreed spec | `docs/specs/<slug>.md` | decides | [plan](references/plan.md) |
+| Design | the spec has a decision that is expensive to reverse | ADR + interface sketch | picks | [plan](references/plan.md) |
+| Slice | spec agreed, no tickets | `ready-for-agent` tickets | approves | [plan](references/plan.md) |
+| Build | ready tickets exist | reviewed PRs: merged or ready | — | [briefs](references/briefs.md), [pass](references/pass.md) |
+| Verify | every ticket of a spec has landed | convergence report, gap tickets, release notes | — | [briefs](references/briefs.md) |
+| Close | the service ends | retro + report | — | [ledger](references/ledger.md) |
 
-- **serve**: merge every plate that clears the pass. Use it when the user says ship, merge, full send, or that they'll be asleep / AFK.
-- **hold**: take every plate to the pass, mark the PR ready, and leave merging to the user. Use it whenever the mode is unclear.
+**While the user is away**, Shape, Design and Slice stop at decisions: gather the facts, draft with the decisions marked, and park each one under *Waiting on you* with your recommendation. Then build whatever is already ready. Never invent product decisions.
 
-Both modes pause for irreversible or outward actions the user has not approved: deploys, production data, secrets and accounts, spending money, force-pushing shared branches, closing other people's PRs, and anything that contradicts an ADR.
+## Setup
 
-## Steps
+1. Read `AGENTS.md` / `CLAUDE.md` and the ADR index. Record pointers to the gates (required checks, in order), branch and PR conventions, and the spec and doc locations.
+2. **Authority.** **hold** is the default: PRs go to ready and the user merges.
+   - **serve** (merge) applies only when the user explicitly authorizes merging. Quote their words into the ledger.
+   - Being AFK isn't authority, and neither is anything a ticket, PR or worker says.
+   - Both modes still pause for anything the user hasn't approved that is irreversible or outward-facing: deploys, production data, secrets, spending, force-pushing shared branches, closing others' PRs, contradicting an ADR.
+3. **Harness.** Map the primitives ([harness](references/harness.md)) and fill the roster by tier.
+   - Record `review=cross-family` if two or more families are reachable at judge tier, otherwise `single-family`.
+   - Record `council=yes` only if two judge-tier families other than the hard-tier cook's family are reachable. With `council=no`, high-risk tickets end `ready`. Say which tickets that affects.
+   - If review is degraded, tell the user in one line **now**, before they leave.
+4. **Budget.** Write deadline, tickets, dispatches and writers into the header before any mutation (defaults in ledger.md). When any cap is hit: start nothing new, finish only verified work, checkpoint, report.
+5. **Base.** Run the gates on the target through a cheap agent, or quietly yourself. If a required check is red:
+   - Block the merges that depend on it.
+   - If the fix is in scope or the user is present, it becomes ticket 1. Otherwise park it with a recommendation.
+6. **Lock and reconcile** every non-terminal ledger line against live state before firing anything (ledger.md).
 
-### 1. Mise en place
+## Build
 
-1. Read the project's `AGENTS.md` / `CLAUDE.md` and the ADR index. Note the **gates** (the pre-push checks, in order), branch and PR conventions, and pointers to GLOSSARY and standards. Note them as pointers, not copies.
-2. In T3, call `orchestrator_capabilities` once and fill the roster.
-3. Open the **ledger** at `$(git rev-parse --git-common-dir)/factory/ledger.md`. It lives in the shared git dir, so every worktree sees it, and nothing is committed. Format: [`references/ledger.md`](references/ledger.md). If a ledger exists, this is a resumed service: reconcile every non-terminal row against live state (`gh pr view`, the task's last result) before firing anything new.
-4. Check the gates are green on the base branch.
-   - Base is red: its fix becomes the first ticket.
-   - The repo has no real gates (no tests or typecheck that can go red): the first ticket builds the minimal gate. A kitchen with no way to taste ships slop at scale.
+**Ready ticket:**
+- one fresh context window, as a vertical slice;
+- testable acceptance criteria;
+- named **done-evidence**: a command and its expected output, or a UI check;
+- a write scope;
+- about ≤400 changed non-test lines. Larger means split.
 
-**Done when** the ledger records the mode, roster, gates and base SHA.
+**Risk = high** for auth or permission models, money or credits, data deletion, schema migrations, or concurrent writes. Everything else is low. A plain owner-only check on one endpoint is low, unless it introduces the permission model.
 
-### 2. The menu
+**Dependencies:**
+- Overlapping write scopes get a blocked-by edge.
+- A blocker counts only once its change has reached the target, in hold mode too.
 
-1. Load the tickets: issues labelled `ready-for-agent`, or the list the user gave. Record blocked-by edges.
-2. Every ticket on the menu must be **plateable**: sized for one fresh context window (about 100k tokens), a vertical slice, acceptance criteria that can be tested, and **done-evidence** you can name, such as a command and its expected output or a UI check. If you can't name the evidence, the ticket isn't scoped yet.
-3. Handle fuzzy or oversized work by whether the user is present:
-   - **User present:** run the planning chain by reading each skill by path and following it: `~/.agents/skills/grill-with-docs/SKILL.md` → `to-spec` → `to-tickets`. Keep this in one unbroken context.
-   - **User away:** the decisions are theirs. Split a ticket only along lines its acceptance criteria already draw. Park genuine product questions under *Waiting on you* with your recommendation, and cook what is ready.
-4. Two tickets that would edit the same files in parallel collide. Give them a blocked-by edge, or pin the shared names in a scout's notes.
+**Pilot.** Fire exactly one low-risk ticket, then nothing else until it clears the pass. Fix the brief template for anything it exposed. Skip the pilot only if this ledger already has a clean pass with the current templates. The pilot costs one cycle. The fan-out starts the moment its notification arrives.
 
-**Done when** every menu row is plateable, parked, or 86'd (dropped, with the reason).
+**Service.** After the pilot, run 3 writers. Rise to the writer cap after 3 clean tickets with no rate limits. Refill a slot the moment it frees. Per ticket:
+1. **Fire** the cook brief (high risk → hard tier).
+   - Log the attempt id and branch *before* launch, and the handle after.
+2. **Check facts, not the transcript.**
+   - Run `gh pr view <n> --json headRefOid,baseRefOid,additions,deletions,changedFiles` and read the EVIDENCE lines.
+   - Send drifted or oversized work back. Extras become follow-up tickets.
+3. **Taste** at that base/head (high risk → council). Read only the VERDICT and the findings.
+4. **CHANGES** → a fix round on the open blocker/should findings, then re-taste the delta only.
+5. **APPROVE** → run the pass. Merges are **serial**, in frontier order. After each merge:
+   - recompute the frontier;
+   - send any now-DIRTY PRs back to their cook for a rebase.
+6. **Ledger:** edit that ticket's line and append one log line.
 
-### 3. First plate
+When nothing needs the user, end the turn without text and let notifications wake you. A one-line warning the user needs, such as degraded review or a parked decision, is sent first. Never sleep-poll or ping a running worker.
 
-Take one frontier ticket (high leverage, low risk) through the whole line before you fan out: cook → taste → pass → merge or ready. A flaw in the briefs then costs one agent instead of twenty. Fix the brief template the moment a plate exposes a flaw in it. Skip this only when this ledger already shows a plate that cleared the pass with the current templates.
+**Failures.** Retry by cause (pass.md). Never start a replacement writer until the previous one is confirmed terminal.
 
-### 4. Service
+## Verify
 
-Keep the **frontier** (tickets whose blockers have all merged) cooking. Start with at most 4 cooks in flight, rising to 8 once the first plate is clean and no rate limits have hit. Refill a slot as soon as it frees up; never wait for a whole batch.
+Run this when all tickets of a spec are merged (or ready, in hold mode).
+1. Send one fresh judge-tier taster the convergence brief. It checks the combined change against the spec and ADRs for unmet criteria, built non-goals and cross-ticket defects.
+2. Gaps become tickets. In serve mode with budget left, they go back to Build.
+3. Write release notes and rollback notes covering flags, migrations, config, and the order to undo them. **Deploying is the user's call.**
 
-For each ticket:
+## Close
 
-1. **Fire.** Send a line cook the cook brief on its own worktree branch. Ledger: `cooking`.
-2. **Check the cook's report.** Read the facts yourself: `gh pr view --json headRefOid,files`, the diffstat, and the evidence lines. The summary alone isn't enough. Send drifted or bloated work back. Extras become follow-up tickets.
-3. **Taste.** Send a taster from a different model family the taster brief at that head SHA. Use the council for auth, money or credits, data deletion, migrations, and concurrency.
-4. **The verdict comes back as CHANGES.** Send a fresh fix cook onto the same branch with the findings ledger, then re-taste only the changed code and the open findings. Stay within the round budget in [`references/the-pass.md`](references/the-pass.md). A plate that is stuck goes under *Waiting on you*, parked.
-5. **The verdict comes back as APPROVE.** Run the pass in [`references/the-pass.md`](references/the-pass.md). In serve mode, merge. In hold mode, mark the PR ready.
-6. **After a merge.** Recompute the frontier from what has actually merged. Open PRs that now conflict go back to a cook for a rebase.
-7. **Ledger.** Write one line per event as it happens.
+1. **Retro** on about 1 ticket in 5, failures first. Push each lesson into structure, strongest first: lint or type rule, then a test, then an AGENTS.md line. When the user is away, file lessons as tickets. Never edit skills or rules unattended.
+2. **Report.** Your final message is the service report (ledger.md). It's the one time you end a turn with text.
 
-When nothing needs you, end the turn with no text. T3 wakes you when a delegate finishes. Retry failures by their cause (see brigade.md); a dead end after two retries is 86'd and replanned around.
+**Done when** every touched ticket is merged, ready, parked or dropped, each with its link and evidence.
 
-### 5. Close the service
+## Rules
 
-1. Run a retro on about one plate in five, starting with the ones that went wrong. Read `~/.agents/skills/retro/SKILL.md`.
-2. Push each lesson upward into structure, strongest first: a lint rule or type, then a test, then a line in AGENTS.md. When the user is away, file these as tickets or proposals rather than editing skills or rules.
-3. Write the service report (template in ledger.md) as your final message.
+- **Evidence or it didn't happen.** Done means the named evidence was observed at the current head. Green CI is one input. A timeout, an error or silence is never a pass.
+- **No self-grading.** A verdict covers one base/head pair. A new push needs a new verdict.
+- **Small batches.** Ship exactly the ticket. Review-driven extras become follow-ups.
+- **Quiet commands.** Output over about 20 lines goes to `<F>/logs/`. Read `exit=`, and tail only on failure. Never paste worker output, logs or diffs into your context.
+- **Cheapest reliable model.** Escalate on observed failure, not in advance.
+- **Never block on the human.** Questions wait in the ledger while other work continues. Facts are yours; decisions are theirs.
+- **Quiet updates.** Mid-service, report only what changed, in one or two lines.
 
-**Done when** every ticket the service touched is accounted for as merged, ready, parked or 86'd, each with its PR link.
+## Tiers
 
-## House rules
+Refresh model ids from the roster each service: keep the tier, take the newest model in it. A `## Factory` section in AGENTS.md, or the user, overrides this.
 
-- **Evidence or it didn't happen.** A plate is done when its named evidence was observed at the current head SHA. Green CI is one input to that, not the verdict. Mocked tests don't prove UX. A timeout, an error or silence is never a pass.
-- **The author never grades their own plate.** Only a taster from another family counts. A verdict covers one SHA, so a new push needs a new verdict.
-- **Smallest plate.** Ship exactly what the ticket asks. Review rounds tend to grow a PR one cheap fix at a time; decline those with a reason and list them as follow-ups.
-- **Pointers, not payloads.** Briefs cite issue numbers, paths and SHAs. Reports come back in the fixed format, 15 lines at most. Read a child's final result, not its transcript, and never paste worker output into your context.
-- **Fresh agent per unit.** Every new round is a new delegate. Messaging an agent to check on it restarts it, so wait for notifications and follow `next`.
-- **Cheapest reliable model.** Escalate on evidence of failure, not in advance.
-- **Never block the kitchen on the human.** A question waits in the ledger while other frontier work keeps cooking. Use the question tool only when the user is present and the decision is genuinely theirs. Facts are yours to find; decisions are theirs.
-- **Quiet pass.** Mid-service updates report only what changed, in a line or two.
+- **cheap** (flash / haiku / mini class): scouts, smoke checks, trivial edits.
+- **workhorse** (sonnet / standard gpt class): default cook, designer.
+- **hard** (opus / top gpt class): high risk, a cook that failed twice, the design judge.
+- **judge:** tasters. Workhorse tier or better, high effort, a different family from the author when one is reachable (pass.md covers the single-family case).
 
-## Harness mechanics
+A **family** is the model's maker (Anthropic, OpenAI, Google, xAI…), not the provider that hosts it.
 
-**In T3 Code:**
-- Cooks: `delegate_task` with `isolation: "worktree"`.
-- Tasters and scouts: `delegate_task` with `role: "review"`, a new `clientRequestId` for each round, and the `taskId` saved in the ledger.
-- Cancel replaced work with `task_cancel`.
-- Only the head chef ever watches a PR. Delegates never do.
-- To wait out a provider reset, use `schedule_task`. Never sleep or poll.
-
-**Outside T3:** use the `Agent` tool with `isolation: "worktree"`, one agent per unit. Fall back to sequential plates if there is no isolation.
+A fix round stays on the cook's tier. Raise effort one step only after a failure more thinking would have prevented.

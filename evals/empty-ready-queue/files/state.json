@@ -1,0 +1,13 @@
+{
+  "repository": "acme/notes",
+  "target": "refs/heads/main",
+  "base": "4f2a9c1",
+  "baseChecks": {
+    "lint": "pass",
+    "typecheck": "pass"
+  },
+  "coordinatorLease": "available",
+  "prAdapter": "gh",
+  "queueAvailable": true,
+  "tickets": []
+}

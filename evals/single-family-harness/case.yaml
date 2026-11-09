@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: single-family-harness
+context:
+  scaffold_script: place-files.sh
+expected_outcome: |
+  Single-vendor harness: the review level is recorded as single-family and disclosed up front; low-risk tickets can still merge on a fresh different-model taster; the high-risk credits ticket is never auto-merged.
